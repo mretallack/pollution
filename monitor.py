@@ -6,31 +6,41 @@ Created on 13 Jan 2021
 '''
 
 import paho.mqtt.client as mqtt
-import sds011
+
+from sds011lib import SDS011QueryReader
+
 import json
 import time
 
-sds = sds011.SDS011(port="/dev/ttyUSB2")
-   
-# set working period to 10 minutes
-# 0：continuous(default)
-# 1-30minute：【work  30 seconds and sleep n*60-30 seconds】
-sds.set_working_period(rate=10)
 
-client = mqtt.Client()
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
 client.connect("retallack.org.uk", 1883, 60)
 
 client.loop_start()
 
-print(sds)
+sensor = SDS011QueryReader('/dev/ttyUSB0')
+
+# Wake it back up
+sensor.wake()
+# we want to read at 10 minute interval
+sensor.set_working_period(10)
 
 while True:
-    # this call will block until the
-    # next measurement is ready
-    meas = sds.read_measurement() 
-    print(meas)
-    client.publish("pollution/livingroom/pm2.5", meas["pm2.5"])
-    client.publish("pollution/livingroom/pm10", meas["pm10"])
+
+    try:
+
+        # Read some data!
+        aqi = sensor.query()
+        print(aqi)
+
+        client.publish("pollution/livingroom/pm2.5", aqi.pm25)
+        client.publish("pollution/livingroom/pm10", aqi.pm10)
     
-    
+    except IncompleteReadException as e:
+        print(e)
+         
+    # poll the sensor for a new value at a quicker period then the update
+    # so we make sure not to miss any
+    time.sleep(4*60)
+

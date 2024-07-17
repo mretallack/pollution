@@ -1,3 +1,7 @@
-sds011
+#sds011
+#pysds011
+sds011lib
+
+pyserial
 paho-mqtt
 
